@@ -43,19 +43,18 @@ function compressImage(dataUrl, maxDim = 512, quality = 0.72) {
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 export default function IdeaCatcher() {
-  const [ideas, setIdeas]           = useState([])
-  const [loaded, setLoaded]         = useState(false)
-  const [tab, setTab]               = useState('text')
-  const [text, setText]             = useState('')
-  const [note, setNote]             = useState('')
-  const [preview, setPreview]       = useState(null)
+  const [ideas, setIdeas]             = useState([])
+  const [loaded, setLoaded]           = useState(false)
+  const [tab, setTab]                 = useState('text')
+  const [title, setTitle]             = useState('')
+  const [summary, setSummary]         = useState('')
+  const [preview, setPreview]         = useState(null)
   const [selectedCat, setSelectedCat] = useState(CAT_KEYS[0])
-  const [filter, setFilter]         = useState('All')
-  const [dragging, setDragging]     = useState(false)
-  const [justAdded, setJustAdded]   = useState(null)
+  const [filter, setFilter]           = useState('All')
+  const [dragging, setDragging]       = useState(false)
+  const [justAdded, setJustAdded]     = useState(null)
   const fileRef = useRef(null)
 
-  // Load from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -64,7 +63,6 @@ export default function IdeaCatcher() {
     setLoaded(true)
   }, [])
 
-  // Save whenever ideas change
   useEffect(() => {
     if (!loaded) return
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas)) } catch (_) {}
@@ -89,35 +87,38 @@ export default function IdeaCatcher() {
   }
 
   const handleSubmit = () => {
-    if (tab === 'text' && !text.trim()) return
+    if (!title.trim()) return
     if (tab === 'image' && !preview) return
 
     const cat = selectedCat
-    const summary = tab === 'text' ? text : (note.trim() || '')
+    const summaryTrimmed = summary.trim()
     const idea = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      type: tab === 'image' ? 'image' : /^https?:\/\//.test(text) ? 'link' : 'text',
-      content: tab === 'text' ? text : (note.trim() || null),
+      type: tab === 'image' ? 'image' : /^https?:\/\//.test(summaryTrimmed) ? 'link' : 'text',
+      content: summaryTrimmed || null,
       thumbnail: tab === 'image' ? preview : null,
       category: cat,
       emoji: CATS[cat].emoji,
       tags: [],
-      summary,
+      title: title.trim(),
+      summary: summaryTrimmed,
       createdAt: new Date().toISOString(),
     }
     setIdeas((prev) => [idea, ...prev])
     setJustAdded(idea.id)
     setTimeout(() => setJustAdded(null), 1200)
-    setText('')
-    setNote('')
+    setTitle('')
+    setSummary('')
     clearImage()
   }
+
+  const onKey = (e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit()
 
   const deleteIdea = (id) => setIdeas((prev) => prev.filter((i) => i.id !== id))
 
   const usedCats = [...new Set(ideas.map((i) => i.category))]
   const filtered = filter === 'All' ? ideas : ideas.filter((i) => i.category === filter)
-  const canSubmit = tab === 'text' ? !!text.trim() : !!preview
+  const canSubmit = !!title.trim() && (tab === 'image' ? !!preview : true)
 
   if (!loaded) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -172,14 +173,24 @@ export default function IdeaCatcher() {
           </div>
 
           <div className="p-4 space-y-3">
+
+            {/* Title field — both tabs */}
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={onKey}
+              placeholder="Title — e.g. Higgsfield reel concept"
+              className="w-full text-sm font-medium text-stone-800 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+            />
+
             {tab === 'text' ? (
               <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit()}
-                placeholder="Paste an Instagram link, describe an idea, drop a recipe, a travel spot, a mindset tip…"
-                rows={3}
-                className="w-full text-sm text-stone-800 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="Short description, link, or extra notes (optional)"
+                rows={2}
+                className="w-full text-sm text-stone-700 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
               />
             ) : (
               <>
@@ -215,16 +226,18 @@ export default function IdeaCatcher() {
                     </div>
                   )}
                 </div>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Optional note about this image…"
-                  className="w-full text-sm text-stone-800 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                <textarea
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  onKeyDown={onKey}
+                  placeholder="Notes about this image (optional)"
+                  rows={2}
+                  className="w-full text-sm text-stone-700 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
                 />
               </>
             )}
 
-            {/* ── Category picker ── */}
+            {/* Category picker */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-stone-400 shrink-0">Category</label>
               <select
@@ -241,9 +254,7 @@ export default function IdeaCatcher() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-stone-400">
-                {tab === 'text' ? '⌘ Enter to save' : ''}
-              </span>
+              <span className="text-xs text-stone-400">⌘ Enter to save</span>
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
@@ -308,7 +319,8 @@ export default function IdeaCatcher() {
                     <img src={idea.thumbnail} alt="" className="w-full h-32 object-cover" />
                   )}
                   <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
+                    {/* Badge + delete */}
+                    <div className="flex items-center justify-between mb-2">
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
                         {cat.emoji} {idea.category}
                       </span>
@@ -321,12 +333,22 @@ export default function IdeaCatcher() {
                       </button>
                     </div>
 
-                    <div className="text-2xl mb-1.5 leading-none">{idea.emoji}</div>
-
-                    {idea.summary && (
-                      <p className="text-sm text-stone-700 leading-relaxed mb-2">{idea.summary}</p>
+                    {/* Title */}
+                    {idea.title ? (
+                      <p className="font-semibold text-stone-900 text-sm leading-snug mb-1">{idea.title}</p>
+                    ) : (
+                      <div className="text-xl mb-1 leading-none">{idea.emoji}</div>
                     )}
 
+                    {/* Summary / body */}
+                    {idea.summary && (
+                      <p className={`text-sm leading-relaxed mb-2 ${idea.title ? 'text-stone-500' : 'text-stone-700'}`}
+                         style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {idea.summary}
+                      </p>
+                    )}
+
+                    {/* Link button */}
                     {idea.content && (() => {
                       const urlMatch = idea.content.match(/https?:\/\/[^\s]+/)
                       const url = idea.type === 'link' ? idea.content : urlMatch?.[0]
