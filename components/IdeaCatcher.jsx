@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-// ─── Category definitions ─────────────────────────────────────────────────────
 const CATS = {
   'Brand Storytelling': { emoji: '🎬', hex: '#ef4444', badge: 'bg-red-100 text-red-800' },
   'UX Animations':      { emoji: '✨', hex: '#8b5cf6', badge: 'bg-violet-100 text-violet-800' },
@@ -16,7 +15,6 @@ const CATS = {
 const CAT_KEYS = Object.keys(CATS)
 const STORAGE_KEY = 'idea-catcher-v2'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 function readFile(file) {
   return new Promise((res, rej) => {
     const r = new FileReader()
@@ -41,6 +39,105 @@ function compressImage(dataUrl, maxDim = 512, quality = 0.72) {
   })
 }
 
+// ─── Detail modal ─────────────────────────────────────────────────────────────
+function IdeaModal({ idea, onClose, onDelete }) {
+  const cat = CATS[idea.category] || CATS['Brand Storytelling']
+  const urlMatch = idea.content?.match(/https?:\/\/[^\s]+/)
+  const url = idea.type === 'link' ? idea.content : urlMatch?.[0]
+
+  useEffect(() => {
+    const handler = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Colour bar */}
+        <div className="h-1.5 w-full" style={{ backgroundColor: cat.hex }} />
+
+        <div className="p-6 space-y-4">
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-3">
+            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
+              {cat.emoji} {idea.category}
+            </span>
+            <button
+              onClick={onClose}
+              className="text-stone-400 hover:text-stone-700 text-xl leading-none shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Image */}
+          {idea.thumbnail && (
+            <img src={idea.thumbnail} alt="" className="w-full rounded-xl object-cover max-h-52" />
+          )}
+
+          {/* Title */}
+          {idea.title && (
+            <h2 className="text-lg font-bold text-stone-900 leading-snug">{idea.title}</h2>
+          )}
+
+          {/* AI summary */}
+          {idea.summary && (
+            <div className="bg-stone-50 rounded-xl p-4">
+              <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Summary</p>
+              <p className="text-sm text-stone-700 leading-relaxed">{idea.summary}</p>
+            </div>
+          )}
+
+          {/* Original notes */}
+          {idea.content && idea.type !== 'link' && (
+            <div>
+              <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
+              <p className="text-sm text-stone-600 leading-relaxed">{idea.content}</p>
+            </div>
+          )}
+
+          {/* Link */}
+          {url && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm font-medium text-white px-4 py-2.5 rounded-xl transition-opacity hover:opacity-80"
+              style={{ backgroundColor: cat.hex }}
+            >
+              <span>🔗</span>
+              <span className="truncate">{url}</span>
+              <span className="ml-auto opacity-70">↗</span>
+            </a>
+          )}
+
+          {/* Date */}
+          <p className="text-xs text-stone-300">
+            Saved {new Date(idea.createdAt).toLocaleDateString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric',
+            })}
+          </p>
+
+          {/* Delete */}
+          <button
+            onClick={() => { onDelete(idea.id); onClose() }}
+            className="w-full text-sm text-red-400 hover:text-red-600 py-2 border border-red-100 hover:border-red-200 rounded-xl transition-colors"
+          >
+            🗑 Delete this idea
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
 export default function IdeaCatcher() {
   const [ideas, setIdeas]             = useState([])
@@ -56,6 +153,7 @@ export default function IdeaCatcher() {
   const [justAdded, setJustAdded]     = useState(null)
   const [processing, setProcessing]   = useState(false)
   const [error, setError]             = useState('')
+  const [expandedIdea, setExpandedIdea] = useState(null)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -120,23 +218,22 @@ export default function IdeaCatcher() {
         emoji: CATS[cat].emoji,
         tags: [],
         title: title.trim(),
-        summary: data.summary || notes.trim(),
+        summary: data.summary || notes.trim() || title.trim(),
         createdAt: new Date().toISOString(),
       }
       setIdeas((prev) => [idea, ...prev])
       setJustAdded(idea.id)
-      setTimeout(() => setJustAdded(null), 1200)
+      setTimeout(() => setJustAdded(null), 1500)
       setTitle('')
       setNotes('')
       clearImage()
     } catch {
-      setError("Couldn't generate summary — idea saved with your notes instead.")
+      setError("Couldn't reach the AI — idea saved without a summary.")
     }
     setProcessing(false)
   }
 
   const onKey = (e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit()
-
   const deleteIdea = (id) => setIdeas((prev) => prev.filter((i) => i.id !== id))
 
   const usedCats = [...new Set(ideas.map((i) => i.category))]
@@ -151,6 +248,15 @@ export default function IdeaCatcher() {
 
   return (
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+
+      {/* ── Detail modal ── */}
+      {expandedIdea && (
+        <IdeaModal
+          idea={expandedIdea}
+          onClose={() => setExpandedIdea(null)}
+          onDelete={deleteIdea}
+        />
+      )}
 
       {/* ── Header ── */}
       <header className="bg-white border-b border-stone-100 sticky top-0 z-20 shadow-sm">
@@ -196,8 +302,6 @@ export default function IdeaCatcher() {
           </div>
 
           <div className="p-4 space-y-3">
-
-            {/* Title — both tabs */}
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -241,10 +345,7 @@ export default function IdeaCatcher() {
                   ) : (
                     <div className="text-center p-6">
                       <div className="text-3xl mb-2">📸</div>
-                      <p className="text-sm text-stone-500">
-                        Drop a screenshot or{' '}
-                        <span className="text-orange-500 font-medium">browse to upload</span>
-                      </p>
+                      <p className="text-sm text-stone-500">Drop a screenshot or <span className="text-orange-500 font-medium">browse to upload</span></p>
                       <p className="text-xs text-stone-400 mt-1">Supports PNG, JPG, WebP</p>
                     </div>
                   )}
@@ -260,7 +361,6 @@ export default function IdeaCatcher() {
               </>
             )}
 
-            {/* Category picker */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-stone-400 shrink-0">Category</label>
               <select
@@ -269,9 +369,7 @@ export default function IdeaCatcher() {
                 className="flex-1 text-sm text-stone-700 border border-stone-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent bg-white"
               >
                 {CAT_KEYS.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {CATS[cat].emoji} {cat}
-                  </option>
+                  <option key={cat} value={cat}>{CATS[cat].emoji} {cat}</option>
                 ))}
               </select>
             </div>
@@ -293,7 +391,7 @@ export default function IdeaCatcher() {
           </div>
         </div>
 
-        {/* ── Category filter pills ── */}
+        {/* ── Filter pills ── */}
         {ideas.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {['All', ...usedCats].map((cat) => {
@@ -324,9 +422,7 @@ export default function IdeaCatcher() {
               {ideas.length === 0 ? 'Your idea board is empty' : 'Nothing in this category yet'}
             </p>
             <p className="text-stone-400 text-sm mt-1">
-              {ideas.length === 0
-                ? 'Catch your first idea above!'
-                : 'Pick a different filter to browse your ideas.'}
+              {ideas.length === 0 ? 'Catch your first idea above!' : 'Pick a different filter.'}
             </p>
           </div>
         ) : (
@@ -337,7 +433,8 @@ export default function IdeaCatcher() {
               return (
                 <div
                   key={idea.id}
-                  className={`bg-white border border-stone-100 border-l-4 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group ${
+                  onClick={() => setExpandedIdea(idea)}
+                  className={`bg-white border border-stone-100 border-l-4 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer group ${
                     isNew ? 'ring-2 ring-orange-300' : ''
                   }`}
                   style={{ borderLeftColor: cat.hex }}
@@ -346,56 +443,27 @@ export default function IdeaCatcher() {
                     <img src={idea.thumbnail} alt="" className="w-full h-32 object-cover" />
                   )}
                   <div className="p-4">
-                    {/* Badge + delete */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
-                        {cat.emoji} {idea.category}
-                      </span>
-                      <button
-                        onClick={() => deleteIdea(idea.id)}
-                        className="text-stone-200 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition-all"
-                        title="Delete idea"
-                      >
-                        🗑
-                      </button>
-                    </div>
+                    {/* Badge */}
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
+                      {cat.emoji} {idea.category}
+                    </span>
 
                     {/* Title */}
-                    {idea.title && (
-                      <p className="font-semibold text-stone-900 text-sm leading-snug mb-1">{idea.title}</p>
-                    )}
+                    <p className="font-semibold text-stone-900 text-sm leading-snug mt-2 mb-1">
+                      {idea.title || idea.summary}
+                    </p>
 
-                    {/* AI summary */}
-                    {idea.summary && (
-                      <p className="text-sm text-stone-500 leading-relaxed mb-2"
+                    {/* Summary — always shown, capped at 3 lines */}
+                    {idea.summary && idea.summary !== idea.title && (
+                      <p className="text-sm text-stone-500 leading-relaxed"
                          style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {idea.summary}
                       </p>
                     )}
 
-                    {/* Link button */}
-                    {idea.content && (() => {
-                      const urlMatch = idea.content.match(/https?:\/\/[^\s]+/)
-                      const url = idea.type === 'link' ? idea.content : urlMatch?.[0]
-                      return url ? (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-xs font-medium text-white mb-2 px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-                          style={{ backgroundColor: cat.hex }}
-                        >
-                          <span>🔗</span>
-                          <span className="truncate">Open link</span>
-                          <span className="ml-auto opacity-70">↗</span>
-                        </a>
-                      ) : null
-                    })()}
-
-                    <p className="text-xs text-stone-300 mt-1">
-                      {new Date(idea.createdAt).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })}
+                    {/* Tap hint */}
+                    <p className="text-xs text-stone-300 mt-3 group-hover:text-stone-400 transition-colors">
+                      Tap to view details →
                     </p>
                   </div>
                 </div>
