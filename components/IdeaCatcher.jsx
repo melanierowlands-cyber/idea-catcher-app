@@ -57,13 +57,13 @@ function IdeaModal({ idea, onClose, onDelete }) {
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Colour bar */}
         <div className="h-1.5 w-full" style={{ backgroundColor: cat.hex }} />
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto">
           {/* Header row */}
           <div className="flex items-start justify-between gap-3">
             <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
