@@ -45,6 +45,7 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
   const [editing, setEditing]       = useState(false)
   const [draftTitle, setDraftTitle] = useState(idea.title || '')
   const [draftNotes, setDraftNotes] = useState(idea.content || '')
+  const [saved, setSaved]           = useState(false)
 
   const cat = CATS[idea.category] || CATS['Brand Storytelling']
   const urlMatch = idea.content?.match(/https?:\/\/[^\s]+/)
@@ -66,7 +67,8 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
 
   const saveEdit = () => {
     onUpdate(idea.id, { title: draftTitle.trim(), content: draftNotes.trim() || null })
-    setEditing(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
   }
 
   return (
@@ -159,15 +161,17 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
             <div className="flex gap-2">
               <button
                 onClick={saveEdit}
-                className="flex-1 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 py-2.5 rounded-xl transition-colors"
+                className={`flex-1 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors ${
+                  saved ? 'bg-emerald-500' : 'bg-orange-500 hover:bg-orange-600'
+                }`}
               >
-                Save changes
+                {saved ? '✓ Saved!' : 'Save changes'}
               </button>
               <button
                 onClick={() => setEditing(false)}
                 className="text-sm text-stone-500 hover:text-stone-700 border border-stone-200 px-4 py-2.5 rounded-xl transition-colors"
               >
-                Cancel
+                Done
               </button>
             </div>
           )}
