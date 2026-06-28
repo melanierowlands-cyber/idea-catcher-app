@@ -95,11 +95,11 @@ function IdeaModal({ idea, onClose, onDelete }) {
             </div>
           )}
 
-          {/* Original notes */}
+          {/* Original notes — preserve line breaks for recipes, lists etc */}
           {idea.content && idea.type !== 'link' && (
             <div>
               <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
-              <p className="text-sm text-stone-600 leading-relaxed">{idea.content}</p>
+              <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
             </div>
           )}
 
@@ -113,7 +113,7 @@ function IdeaModal({ idea, onClose, onDelete }) {
               style={{ backgroundColor: cat.hex }}
             >
               <span>🔗</span>
-              <span className="truncate">{url}</span>
+              <span>Open link</span>
               <span className="ml-auto opacity-70">↗</span>
             </a>
           )}
