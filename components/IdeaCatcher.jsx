@@ -10,6 +10,7 @@ const CATS = {
   'Mindset & Spirit':   { emoji: '🧘', hex: '#6366f1', badge: 'bg-indigo-100 text-indigo-800' },
   'Food & Recipes':     { emoji: '🍜', hex: '#f97316', badge: 'bg-orange-100 text-orange-800' },
   'Travel & Places':    { emoji: '🌍', hex: '#0ea5e9', badge: 'bg-sky-100 text-sky-800' },
+  'AI Tools':           { emoji: '🤖', hex: '#06b6d4', badge: 'bg-cyan-100 text-cyan-800' },
 }
 
 const CAT_KEYS = Object.keys(CATS)
@@ -40,7 +41,7 @@ function compressImage(dataUrl, maxDim = 512, quality = 0.72) {
 }
 
 // ─── Detail modal ─────────────────────────────────────────────────────────────
-function IdeaModal({ idea, onClose, onDelete }) {
+function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
   const cat = CATS[idea.category] || CATS['Brand Storytelling']
   const urlMatch = idea.content?.match(/https?:\/\/[^\s]+/)
   const url = idea.type === 'link' ? idea.content : urlMatch?.[0]
@@ -66,9 +67,15 @@ function IdeaModal({ idea, onClose, onDelete }) {
         <div className="p-6 space-y-4 overflow-y-auto">
           {/* Header row */}
           <div className="flex items-start justify-between gap-3">
-            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cat.badge}`}>
-              {cat.emoji} {idea.category}
-            </span>
+            <select
+              value={idea.category}
+              onChange={(e) => onRecategorize(idea.id, e.target.value)}
+              className={`text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-300 ${cat.badge}`}
+            >
+              {CAT_KEYS.map((c) => (
+                <option key={c} value={c}>{CATS[c].emoji} {c}</option>
+              ))}
+            </select>
             <button
               onClick={onClose}
               className="text-stone-400 hover:text-stone-700 text-xl leading-none shrink-0"
@@ -235,6 +242,10 @@ export default function IdeaCatcher() {
 
   const onKey = (e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit()
   const deleteIdea = (id) => setIdeas((prev) => prev.filter((i) => i.id !== id))
+  const recategorizeIdea = (id, newCat) => {
+    setIdeas((prev) => prev.map((i) => i.id === id ? { ...i, category: newCat, emoji: CATS[newCat].emoji } : i))
+    setExpandedIdea((prev) => prev?.id === id ? { ...prev, category: newCat, emoji: CATS[newCat].emoji } : prev)
+  }
 
   const usedCats = [...new Set(ideas.map((i) => i.category))]
   const filtered = filter === 'All' ? ideas : ideas.filter((i) => i.category === filter)
@@ -255,6 +266,7 @@ export default function IdeaCatcher() {
           idea={expandedIdea}
           onClose={() => setExpandedIdea(null)}
           onDelete={deleteIdea}
+          onRecategorize={recategorizeIdea}
         />
       )}
 
