@@ -136,27 +136,23 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
             </div>
           )}
 
-          {/* Notes — editable or read-only */}
-          {editing ? (
-            <div>
-              <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
+          {/* Notes — always visible, editable when in edit mode */}
+          <div>
+            <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
+            {editing ? (
               <textarea
                 value={draftNotes}
                 onChange={(e) => setDraftNotes(e.target.value)}
                 rows={6}
                 placeholder="Add notes, details, ingredients, steps…"
                 className="w-full text-sm text-stone-700 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300"
-                style={{ whiteSpace: 'pre-wrap' }}
               />
-            </div>
-          ) : (
-            (idea.content && idea.type !== 'link') && (
-              <div>
-                <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
-                <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
-              </div>
-            )
-          )}
+            ) : idea.content && idea.type !== 'link' ? (
+              <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
+            ) : (
+              <p className="text-sm text-stone-300 italic">No notes yet — tap ✏️ Edit to add some.</p>
+            )}
+          </div>
 
           {/* Edit action buttons */}
           {editing && (
