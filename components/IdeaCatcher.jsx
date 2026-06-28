@@ -147,7 +147,7 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
                 placeholder="Add notes, details, ingredients, steps…"
                 className="w-full text-sm text-stone-700 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300"
               />
-            ) : idea.content && idea.type !== 'link' ? (
+            ) : idea.content && idea.content !== idea.summary ? (
               <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
             ) : (
               <p className="text-sm text-stone-300 italic">No notes yet — tap ✏️ Edit to add some.</p>
