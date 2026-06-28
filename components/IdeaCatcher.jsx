@@ -47,12 +47,15 @@ export default function IdeaCatcher() {
   const [loaded, setLoaded]           = useState(false)
   const [tab, setTab]                 = useState('text')
   const [title, setTitle]             = useState('')
-  const [summary, setSummary]         = useState('')
+  const [notes, setNotes]             = useState('')
   const [preview, setPreview]         = useState(null)
+  const [apiImg, setApiImg]           = useState(null)
   const [selectedCat, setSelectedCat] = useState(CAT_KEYS[0])
   const [filter, setFilter]           = useState('All')
   const [dragging, setDragging]       = useState(false)
   const [justAdded, setJustAdded]     = useState(null)
+  const [processing, setProcessing]   = useState(false)
+  const [error, setError]             = useState('')
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -71,8 +74,12 @@ export default function IdeaCatcher() {
   const processFile = useCallback(async (file) => {
     if (!file?.type.startsWith('image/')) return
     const raw = await readFile(file)
-    const thumb = await compressImage(raw, 280, 0.65)
+    const [thumb, big] = await Promise.all([
+      compressImage(raw, 280, 0.65),
+      compressImage(raw, 512, 0.75),
+    ])
     setPreview(thumb)
+    setApiImg(big.split(',')[1])
   }, [])
 
   const handleDrop = useCallback((e) => {
@@ -84,32 +91,48 @@ export default function IdeaCatcher() {
   const clearImage = (e) => {
     e?.stopPropagation()
     setPreview(null)
+    setApiImg(null)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) return
     if (tab === 'image' && !preview) return
-
-    const cat = selectedCat
-    const summaryTrimmed = summary.trim()
-    const idea = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      type: tab === 'image' ? 'image' : /^https?:\/\//.test(summaryTrimmed) ? 'link' : 'text',
-      content: summaryTrimmed || null,
-      thumbnail: tab === 'image' ? preview : null,
-      category: cat,
-      emoji: CATS[cat].emoji,
-      tags: [],
-      title: title.trim(),
-      summary: summaryTrimmed,
-      createdAt: new Date().toISOString(),
+    setProcessing(true)
+    setError('')
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          notes: notes.trim(),
+          imageBase64: tab === 'image' ? apiImg : null,
+        }),
+      })
+      const data = res.ok ? await res.json() : {}
+      const cat = selectedCat
+      const idea = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: tab === 'image' ? 'image' : /^https?:\/\//.test(notes.trim()) ? 'link' : 'text',
+        content: notes.trim() || null,
+        thumbnail: tab === 'image' ? preview : null,
+        category: cat,
+        emoji: CATS[cat].emoji,
+        tags: [],
+        title: title.trim(),
+        summary: data.summary || notes.trim(),
+        createdAt: new Date().toISOString(),
+      }
+      setIdeas((prev) => [idea, ...prev])
+      setJustAdded(idea.id)
+      setTimeout(() => setJustAdded(null), 1200)
+      setTitle('')
+      setNotes('')
+      clearImage()
+    } catch {
+      setError("Couldn't generate summary — idea saved with your notes instead.")
     }
-    setIdeas((prev) => [idea, ...prev])
-    setJustAdded(idea.id)
-    setTimeout(() => setJustAdded(null), 1200)
-    setTitle('')
-    setSummary('')
-    clearImage()
+    setProcessing(false)
   }
 
   const onKey = (e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit()
@@ -118,7 +141,7 @@ export default function IdeaCatcher() {
 
   const usedCats = [...new Set(ideas.map((i) => i.category))]
   const filtered = filter === 'All' ? ideas : ideas.filter((i) => i.category === filter)
-  const canSubmit = !!title.trim() && (tab === 'image' ? !!preview : true)
+  const canSubmit = !!title.trim() && !processing && (tab === 'image' ? !!preview : true)
 
   if (!loaded) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -160,7 +183,7 @@ export default function IdeaCatcher() {
             ].map((t) => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => { setTab(t.id); setError('') }}
                 className={`flex-1 text-sm py-3 font-medium transition-colors border-b-2 ${
                   tab === t.id
                     ? 'border-orange-500 text-orange-600 bg-orange-50'
@@ -174,7 +197,7 @@ export default function IdeaCatcher() {
 
           <div className="p-4 space-y-3">
 
-            {/* Title field — both tabs */}
+            {/* Title — both tabs */}
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -185,10 +208,10 @@ export default function IdeaCatcher() {
 
             {tab === 'text' ? (
               <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 onKeyDown={onKey}
-                placeholder="Short description, link, or extra notes (optional)"
+                placeholder="Notes, link, or extra context for the AI summary (optional)"
                 rows={2}
                 className="w-full text-sm text-stone-700 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
               />
@@ -227,10 +250,10 @@ export default function IdeaCatcher() {
                   )}
                 </div>
                 <textarea
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   onKeyDown={onKey}
-                  placeholder="Notes about this image (optional)"
+                  placeholder="Notes or context for the AI summary (optional)"
                   rows={2}
                   className="w-full text-sm text-stone-700 placeholder-stone-300 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
                 />
@@ -253,6 +276,8 @@ export default function IdeaCatcher() {
               </select>
             </div>
 
+            {error && <p className="text-amber-500 text-xs">{error}</p>}
+
             <div className="flex items-center justify-between">
               <span className="text-xs text-stone-400">⌘ Enter to save</span>
               <button
@@ -260,7 +285,9 @@ export default function IdeaCatcher() {
                 disabled={!canSubmit}
                 className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all bg-orange-500 hover:bg-orange-600 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                🪣 Catch idea
+                {processing
+                  ? <><span className="inline-block animate-spin">⏳</span> Summarising…</>
+                  : '🪣 Catch idea'}
               </button>
             </div>
           </div>
@@ -334,15 +361,13 @@ export default function IdeaCatcher() {
                     </div>
 
                     {/* Title */}
-                    {idea.title ? (
+                    {idea.title && (
                       <p className="font-semibold text-stone-900 text-sm leading-snug mb-1">{idea.title}</p>
-                    ) : (
-                      <div className="text-xl mb-1 leading-none">{idea.emoji}</div>
                     )}
 
-                    {/* Summary / body */}
+                    {/* AI summary */}
                     {idea.summary && (
-                      <p className={`text-sm leading-relaxed mb-2 ${idea.title ? 'text-stone-500' : 'text-stone-700'}`}
+                      <p className="text-sm text-stone-500 leading-relaxed mb-2"
                          style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {idea.summary}
                       </p>
