@@ -41,21 +41,38 @@ function compressImage(dataUrl, maxDim = 512, quality = 0.72) {
 }
 
 // ─── Detail modal ─────────────────────────────────────────────────────────────
-function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
+function IdeaModal({ idea, onClose, onDelete, onRecategorize, onUpdate }) {
+  const [editing, setEditing]       = useState(false)
+  const [draftTitle, setDraftTitle] = useState(idea.title || '')
+  const [draftNotes, setDraftNotes] = useState(idea.content || '')
+
   const cat = CATS[idea.category] || CATS['Brand Storytelling']
   const urlMatch = idea.content?.match(/https?:\/\/[^\s]+/)
   const url = idea.type === 'link' ? idea.content : urlMatch?.[0]
 
   useEffect(() => {
-    const handler = (e) => e.key === 'Escape' && onClose()
+    const handler = (e) => {
+      if (e.key === 'Escape') editing ? setEditing(false) : onClose()
+    }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, editing])
+
+  const startEdit = () => {
+    setDraftTitle(idea.title || '')
+    setDraftNotes(idea.content || '')
+    setEditing(true)
+  }
+
+  const saveEdit = () => {
+    onUpdate(idea.id, { title: draftTitle.trim(), content: draftNotes.trim() || null })
+    setEditing(false)
+  }
 
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+      onClick={() => { if (!editing) onClose() }}
     >
       <div
         className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
@@ -66,7 +83,7 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
 
         <div className="p-6 space-y-4 overflow-y-auto">
           {/* Header row */}
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <select
               value={idea.category}
               onChange={(e) => onRecategorize(idea.id, e.target.value)}
@@ -76,12 +93,22 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
                 <option key={c} value={c}>{CATS[c].emoji} {c}</option>
               ))}
             </select>
-            <button
-              onClick={onClose}
-              className="text-stone-400 hover:text-stone-700 text-xl leading-none shrink-0"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {!editing && (
+                <button
+                  onClick={startEdit}
+                  className="text-xs text-stone-400 hover:text-orange-500 font-medium transition-colors px-2 py-1 rounded-lg hover:bg-orange-50"
+                >
+                  ✏️ Edit
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="text-stone-400 hover:text-stone-700 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Image */}
@@ -90,8 +117,15 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
           )}
 
           {/* Title */}
-          {idea.title && (
-            <h2 className="text-lg font-bold text-stone-900 leading-snug">{idea.title}</h2>
+          {editing ? (
+            <input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              className="w-full text-lg font-bold text-stone-900 border border-stone-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+              placeholder="Title"
+            />
+          ) : (
+            idea.title && <h2 className="text-lg font-bold text-stone-900 leading-snug">{idea.title}</h2>
           )}
 
           {/* AI summary */}
@@ -102,16 +136,48 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
             </div>
           )}
 
-          {/* Original notes — preserve line breaks for recipes, lists etc */}
-          {idea.content && idea.type !== 'link' && (
+          {/* Notes — editable or read-only */}
+          {editing ? (
             <div>
               <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
-              <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
+              <textarea
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
+                rows={6}
+                placeholder="Add notes, details, ingredients, steps…"
+                className="w-full text-sm text-stone-700 border border-stone-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300"
+                style={{ whiteSpace: 'pre-wrap' }}
+              />
+            </div>
+          ) : (
+            (idea.content && idea.type !== 'link') && (
+              <div>
+                <p className="text-xs font-medium text-stone-400 mb-1 uppercase tracking-wide">Notes</p>
+                <p className="text-sm text-stone-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{idea.content}</p>
+              </div>
+            )
+          )}
+
+          {/* Edit action buttons */}
+          {editing && (
+            <div className="flex gap-2">
+              <button
+                onClick={saveEdit}
+                className="flex-1 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 py-2.5 rounded-xl transition-colors"
+              >
+                Save changes
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="text-sm text-stone-500 hover:text-stone-700 border border-stone-200 px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           )}
 
           {/* Link */}
-          {url && (
+          {url && !editing && (
             <a
               href={url}
               target="_blank"
@@ -133,12 +199,14 @@ function IdeaModal({ idea, onClose, onDelete, onRecategorize }) {
           </p>
 
           {/* Delete */}
+          {!editing && (
           <button
             onClick={() => { onDelete(idea.id); onClose() }}
             className="w-full text-sm text-red-400 hover:text-red-600 py-2 border border-red-100 hover:border-red-200 rounded-xl transition-colors"
           >
             🗑 Delete this idea
           </button>
+          )}
         </div>
       </div>
     </div>
@@ -246,6 +314,10 @@ export default function IdeaCatcher() {
     setIdeas((prev) => prev.map((i) => i.id === id ? { ...i, category: newCat, emoji: CATS[newCat].emoji } : i))
     setExpandedIdea((prev) => prev?.id === id ? { ...prev, category: newCat, emoji: CATS[newCat].emoji } : prev)
   }
+  const updateIdea = (id, changes) => {
+    setIdeas((prev) => prev.map((i) => i.id === id ? { ...i, ...changes } : i))
+    setExpandedIdea((prev) => prev?.id === id ? { ...prev, ...changes } : prev)
+  }
 
   const usedCats = [...new Set(ideas.map((i) => i.category))]
   const filtered = filter === 'All' ? ideas : ideas.filter((i) => i.category === filter)
@@ -267,6 +339,7 @@ export default function IdeaCatcher() {
           onClose={() => setExpandedIdea(null)}
           onDelete={deleteIdea}
           onRecategorize={recategorizeIdea}
+          onUpdate={updateIdea}
         />
       )}
 
