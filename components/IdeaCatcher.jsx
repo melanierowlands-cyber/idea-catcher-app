@@ -3,14 +3,38 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 const CATS = {
-  'Brand Storytelling': { emoji: '🎬', hex: '#ef4444', badge: 'bg-red-100 text-red-800' },
-  'UX Animations':      { emoji: '✨', hex: '#8b5cf6', badge: 'bg-violet-100 text-violet-800' },
-  'Personal Brand':     { emoji: '🌟', hex: '#f59e0b', badge: 'bg-amber-100 text-amber-800' },
-  'Digital Products':   { emoji: '💰', hex: '#10b981', badge: 'bg-emerald-100 text-emerald-800' },
-  'Mindset & Spirit':   { emoji: '🧘', hex: '#6366f1', badge: 'bg-indigo-100 text-indigo-800' },
-  'Food & Recipes':     { emoji: '🍜', hex: '#f97316', badge: 'bg-orange-100 text-orange-800' },
-  'Travel & Places':    { emoji: '🌍', hex: '#0ea5e9', badge: 'bg-sky-100 text-sky-800' },
-  'AI Tools':           { emoji: '🤖', hex: '#06b6d4', badge: 'bg-cyan-100 text-cyan-800' },
+  'Brand Storytelling': {
+    emoji: '🎬', hex: '#ef4444', badge: 'bg-red-100 text-red-800',
+    description: 'Ideas for short-form social content, 5–15 second clips, and branded visuals. The goal is to build a portfolio of short, stylised, branded clips to post on Upwork, Indeed, and LinkedIn — attracting contract work from companies and setting apart your product design portfolio with recruiters. Main tools: Higgsfield and Claude.',
+  },
+  'UX Animations': {
+    emoji: '✨', hex: '#8b5cf6', badge: 'bg-violet-100 text-violet-800',
+    description: 'Ideas for micro-animations created in Figma Motion, Jitter, and Lottie. The goal is to elevate your UX portfolio and land contract work through polished, professional motion design.',
+  },
+  'Personal Brand': {
+    emoji: '🌟', hex: '#f59e0b', badge: 'bg-amber-100 text-amber-800',
+    description: 'Building in public — sharing what you learn, what you struggle with, and cool things to try. The focus is on creating an easy, efficient workflow for content creation and auto-posting to Instagram and LinkedIn.',
+  },
+  'Digital Products': {
+    emoji: '💰', hex: '#10b981', badge: 'bg-emerald-100 text-emerald-800',
+    description: 'Ideas for selling templates, presets, courses, and workflows as digital products — primarily through an Instagram channel to monetise the skills and content built across the other categories.',
+  },
+  'Mindset & Spirit': {
+    emoji: '🧘', hex: '#6366f1', badge: 'bg-indigo-100 text-indigo-800',
+    description: 'Motivational quotes, mindset frameworks, spiritual insights, and personal growth ideas to keep you focused, grounded, and inspired on the journey.',
+  },
+  'Food & Recipes': {
+    emoji: '🍜', hex: '#f97316', badge: 'bg-orange-100 text-orange-800',
+    description: 'Recipes to try, restaurants to visit, meal inspiration, and food ideas worth saving for later.',
+  },
+  'Travel & Places': {
+    emoji: '🌍', hex: '#0ea5e9', badge: 'bg-sky-100 text-sky-800',
+    description: 'Holiday destinations, fun places to visit, experiences to have, and travel inspiration worth remembering.',
+  },
+  'AI Tools': {
+    emoji: '🤖', hex: '#06b6d4', badge: 'bg-cyan-100 text-cyan-800',
+    description: 'Capturing and exploring AI processes, tools, and workflows — constantly learning what\'s new and how to apply it to your creative and professional work.',
+  },
 }
 
 const CAT_KEYS = Object.keys(CATS)
@@ -478,24 +502,41 @@ export default function IdeaCatcher() {
 
         {/* ── Filter pills ── */}
         {ideas.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {['All', ...usedCats].map((cat) => {
-              const info = CATS[cat]
-              const count = cat === 'All' ? ideas.length : ideas.filter((i) => i.category === cat).length
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                    filter === cat
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-orange-300'
-                  }`}
-                >
-                  {info ? info.emoji + ' ' : ''}{cat} ({count})
-                </button>
-              )
-            })}
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {['All', ...usedCats].map((cat) => {
+                const info = CATS[cat]
+                const count = cat === 'All' ? ideas.length : ideas.filter((i) => i.category === cat).length
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setFilter(cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                      filter === cat
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-stone-600 border-stone-200 hover:border-orange-300'
+                    }`}
+                  >
+                    {info ? info.emoji + ' ' : ''}{cat} ({count})
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Category description card */}
+            {filter !== 'All' && CATS[filter] && (
+              <div
+                className="rounded-xl p-3 border-l-4 bg-white shadow-sm"
+                style={{ borderLeftColor: CATS[filter].hex }}
+              >
+                <p className="text-xs font-semibold text-stone-700 mb-0.5">
+                  {CATS[filter].emoji} {filter}
+                </p>
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  {CATS[filter].description}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
